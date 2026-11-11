@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Big Pickle — Inventory &amp; Sales</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">BP</div>
+        <div class="brand-text">
+          <strong>Big Pickle</strong>
+          <span>Inventory &amp; Sales</span>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Main navigation">
+        <button class="nav-item active" data-view="dashboard">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-view="inventory">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
+          <span>Inventory</span>
+        </button>
+        <button class="nav-item" data-view="sales">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+          <span>Sales</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <label class="field compact">
+          <span>Currency</span>
+          <select id="currencySelect" aria-label="Currency">
+            <option value="$">$ USD</option>
+            <option value="€">€ EUR</option>
+            <option value="£">£ GBP</option>
+            <option value="₦">₦ NGN</option>
+            <option value="₹">₹ INR</option>
+            <option value="R">R ZAR</option>
+            <option value="KSh">KSh KES</option>
+          </select>
+        </label>
+        <div class="backup-row">
+          <button id="exportBtn" class="btn ghost small" type="button">Export</button>
+          <button id="importBtn" class="btn ghost small" type="button">Import</button>
+          <input type="file" id="importFile" accept="application/json,.json" hidden />
+        </div>
+        <button id="resetBtn" class="btn ghost small danger-ghost" type="button">Clear all data</button>
+        <p class="storage-note">Data is saved in this browser.</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" id="pageEyebrow">Overview</p>
+          <h1 id="pageTitle">Dashboard</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn ghost" id="recordSaleBtn" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            Record sale
+          </button>
+          <button class="btn primary" id="addProductBtn" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            Add product
+          </button>
+        </div>
+      </header>
+
+      <!-- Dashboard -->
+      <section id="view-dashboard" class="view">
+        <div class="kpi-grid">
+          <article class="card kpi">
+            <div class="kpi-label">Units in stock</div>
+            <div class="kpi-value" id="kpiUnits">0</div>
+            <div class="kpi-sub" id="kpiUnitsSub">0 products</div>
+          </article>
+          <article class="card kpi">
+            <div class="kpi-label">Stock value</div>
+            <div class="kpi-value" id="kpiStockValue">$0.00</div>
+            <div class="kpi-sub" id="kpiStockValueSub">At current prices</div>
+          </article>
+          <article class="card kpi accent">
+            <div class="kpi-label">Sales revenue</div>
+            <div class="kpi-value" id="kpiRevenue">$0.00</div>
+            <div class="kpi-sub" id="kpiRevenueSub">0 sales recorded</div>
+          </article>
+          <article class="card kpi warn">
+            <div class="kpi-label">Low stock</div>
+            <div class="kpi-value" id="kpiLowStock">0</div>
+            <div class="kpi-sub" id="kpiLowStockSub">Needs attention</div>
+          </article>
+        </div>
+
+        <div class="grid-2">
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <h2>Revenue — last 7 days</h2>
+                <p class="card-sub">Daily sales totals</p>
+              </div>
+              <div class="chart-total">
+                <span>7-day total</span>
+                <strong id="chartTotal">$0.00</strong>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="salesChart" role="img" aria-label="Bar chart of revenue over the last 7 days"></canvas>
+              <div class="chart-empty hidden" id="chartEmpty">No sales in the last 7 days yet.</div>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <h2>Top products</h2>
+                <p class="card-sub">By units sold</p>
+              </div>
+            </div>
+            <div class="rank-list" id="topProducts"></div>
+          </article>
+        </div>
+
+        <article class="card">
+          <div class="card-head">
+            <div class="card-head-inline">
+              <h2>Low stock alerts</h2>
+              <span class="badge low" id="lowStockBadge">0</span>
+            </div>
+            <button class="btn ghost small" type="button" data-goto="inventory">View inventory</button>
+          </div>
+          <div class="alert-list" id="lowStockList"></div>
+        </article>
+      </section>
+
+      <!-- Inventory -->
+      <section id="view-inventory" class="view hidden">
+        <article class="card">
+          <div class="table-toolbar">
+            <div class="toolbar-left">
+              <label class="search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input id="inventorySearch" type="search" placeholder="Search products, SKU, category…" aria-label="Search inventory" />
+              </label>
+              <select id="categoryFilter" class="filter-select" aria-label="Filter by category">
+                <option value="all">All categories</option>
+              </select>
+            </div>
+            <span class="muted" id="inventoryCount">0 products</span>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Category</th>
+                  <th class="num">Stock</th>
+                  <th class="num">Unit price</th>
+                  <th class="num">Value</th>
+                  <th>Status</th>
+                  <th class="actions-col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inventoryBody"></tbody>
+            </table>
+          </div>
+          <div class="empty hidden" id="inventoryEmpty">
+            <p class="empty-title">No products found</p>
+            <p class="empty-sub">Add your first product to start tracking stock, or load sample data to explore.</p>
+            <div class="empty-actions">
+              <button class="btn primary" type="button" data-add-product>Add product</button>
+              <button class="btn ghost" type="button" data-load-demo>Load sample data</button>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- Sales -->
+      <section id="view-sales" class="view hidden">
+        <div class="mini-stats">
+          <div class="mini-stat">
+            <span>Filtered revenue</span>
+            <strong id="salesRevenue">$0.00</strong>
+          </div>
+          <div class="mini-stat">
+            <span>Units sold</span>
+            <strong id="salesUnits">0</strong>
+          </div>
+          <div class="mini-stat">
+            <span>Transactions</span>
+            <strong id="salesCount">0</strong>
+          </div>
+        </div>
+
+        <article class="card">
+          <div class="table-toolbar">
+            <div class="toolbar-left">
+              <label class="search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                <input id="salesSearch" type="search" placeholder="Search sales by product…" aria-label="Search sales" />
+              </label>
+            </div>
+            <div class="toolbar-right">
+              <button class="btn ghost small" id="exportSalesBtn" type="button">Export CSV</button>
+              <button class="btn primary small" type="button" data-record-sale>Record sale</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Product</th>
+                  <th class="num">Qty</th>
+                  <th class="num">Unit price</th>
+                  <th class="num">Total</th>
+                  <th class="actions-col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="salesBody"></tbody>
+            </table>
+          </div>
+          <div class="empty hidden" id="salesEmpty">
+            <p class="empty-title">No sales yet</p>
+            <p class="empty-sub">Record your first sale to see it here.</p>
+            <button class="btn primary" type="button" data-record-sale>Record sale</button>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <!-- Product modal -->
+  <div class="modal hidden" id="productModal">
+    <div class="modal-backdrop" data-close="productModal"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="productModalTitle">
+      <div class="modal-head">
+        <h2 id="productModalTitle">Add product</h2>
+        <button class="icon-btn" type="button" data-close="productModal" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <form id="productForm">
+        <input type="hidden" id="productId" />
+        <div class="form-grid">
+          <label class="field span-2">
+            <span>Product name</span>
+            <input id="productName" required maxlength="80" placeholder="e.g. Wireless Mouse" />
+          </label>
+          <label class="field">
+            <span>SKU</span>
+            <input id="productSku" maxlength="30" placeholder="WM-001" />
+          </label>
+          <label class="field">
+            <span>Category</span>
+            <input id="productCategory" maxlength="40" placeholder="Electronics" list="categoryOptions" />
+            <datalist id="categoryOptions"></datalist>
+          </label>
+          <label class="field">
+            <span>Quantity in stock</span>
+            <input id="productQty" type="number" min="0" step="1" value="0" required />
+          </label>
+          <label class="field">
+            <span>Unit price</span>
+            <input id="productPrice" type="number" min="0" step="0.01" value="0" required />
+          </label>
+          <label class="field span-2">
+            <span>Low stock alert at</span>
+            <input id="productReorder" type="number" min="0" step="1" value="5" required />
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" data-close="productModal">Cancel</button>
+          <button type="submit" class="btn primary">Save product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Sale modal -->
+  <div class="modal hidden" id="saleModal">
+    <div class="modal-backdrop" data-close="saleModal"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="saleModalTitle">
+      <div class="modal-head">
+        <h2 id="saleModalTitle">Record sale</h2>
+        <button class="icon-btn" type="button" data-close="saleModal" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <form id="saleForm">
+        <div class="form-grid">
+          <label class="field span-2">
+            <span>Product</span>
+            <select id="saleProduct" required></select>
+          </label>
+          <div class="sale-preview span-2">
+            <div><span>Unit price</span><strong id="salePrice">$0.00</strong></div>
+            <div><span>Available</span><strong id="saleStockHint">0</strong></div>
+          </div>
+          <label class="field span-2">
+            <span>Quantity sold</span>
+            <input id="saleQty" type="number" min="1" step="1" value="1" required />
+          </label>
+        </div>
+        <div class="sale-total">
+          <span>Sale total</span>
+          <strong id="saleTotal">$0.00</strong>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn ghost" data-close="saleModal">Cancel</button>
+          <button type="submit" class="btn primary" id="saleSubmitBtn">Complete sale</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
